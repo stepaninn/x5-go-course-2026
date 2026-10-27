@@ -34,6 +34,12 @@ type PushNotifier struct {
 	Messages []string
 }
 
+type SMSNotifier struct {
+	BaseNotifier
+	Number   string
+	Messages []string
+}
+
 // Дополнительный контракт только для подписи ошибки.
 // Основной интерфейс Notifier остаётся прежним.
 type namedNotifier interface {
@@ -62,24 +68,50 @@ func (n *BrokenNotifier) Send(message string) error {
 	panic("драйвер канала повреждён")
 }
 
-// TODO: создайте одну общую ошибку с текстом "пустое сообщение".
-var ErrEmptyMessage error
+var ErrEmptyMessage = errors.New("пустое сообщение")
 
 func (e *SendError) Error() string {
-	// TODO: домашняя работа. Формат: "канал <Channel>: <Reason>".
-	return "TODO"
+	return fmt.Sprintf("канал %s: %s", e.Channel, e.Reason)
 }
 
 func (n *EmailNotifier) Send(message string) error {
-	// TODO: шаг 1. До записи проверьте пустое сообщение.
-	// TODO: дома добавьте проверку Address через *SendError.
+	if message == "" {
+		return ErrEmptyMessage
+	}
+	if n.Address == "" {
+		return &SendError{
+			Channel: n.Channel,
+			Reason:  "не задан адрес",
+		}
+	}
 	n.Messages = append(n.Messages, n.Label(message))
 	return nil
 }
 
 func (n *PushNotifier) Send(message string) error {
-	// TODO: шаг 1. До записи проверьте пустое сообщение.
-	// TODO: дома добавьте проверку DeviceID через *SendError.
+	if message == "" {
+		return ErrEmptyMessage
+	}
+	if n.DeviceID == "" {
+		return &SendError{
+			Channel: n.Channel,
+			Reason:  "не задан device id",
+		}
+	}
+	n.Messages = append(n.Messages, n.Label(message))
+	return nil
+}
+
+func (n *SMSNotifier) Send(message string) error {
+	if message == "" {
+		return ErrEmptyMessage
+	}
+	if n.Number == "" {
+		return &SendError{
+			Channel: n.Channel,
+			Reason:  "не задан номер телефона",
+		}
+	}
 	n.Messages = append(n.Messages, n.Label(message))
 	return nil
 }
@@ -87,23 +119,29 @@ func (n *PushNotifier) Send(message string) error {
 func Dispatch(all []Notifier, message string) error {
 	for _, n := range all {
 		if err := n.Send(message); err != nil {
-			// TODO: шаг 2. Сохраните причину и добавьте channelName(n).
-			return err
+			return fmt.Errorf("канал %s: %w", channelName(n), err)
 		}
 	}
 	return nil
 }
 
 func SafeSend(n Notifier, message string) (err error) {
-	// TODO: шаг 3. Превратите панику в ошибку через defer и recover.
-	// Обычную ошибку Send возвращайте без изменений.
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%w: %v", ErrNotifierPanic, r)
+		}
+	}()
 	return n.Send(message)
 }
 
-func SafeDispatch(all []Notifier, message string) []error {
-	// TODO: шаг 3. Вызовите SafeSend для каждого канала.
-	// Соберите ошибки с контекстом канала. Продолжайте после сбоя.
-	return nil
+func SafeDispatch(all []Notifier, message string) (errs []error) {
+	for _, n := range all {
+		if err := SafeSend(n, message); err != nil {
+			errs = append(errs,
+				fmt.Errorf("канал %s: %w", channelName(n), err))
+		}
+	}
+	return errs
 }
 
 func EmailAddress(n Notifier) (string, bool) {
