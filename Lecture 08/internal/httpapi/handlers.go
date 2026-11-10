@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"example.com/lesson8-practice/internal/repository"
@@ -36,6 +37,24 @@ func createOrder(store *repository.Store) http.HandlerFunc {
 		order := store.Create(customer)
 
 		writeJSON(w, http.StatusCreated, order)
+	}
+}
+
+func getOrder(store *repository.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil || id <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid order id"})
+			return
+		}
+
+		order, ok := store.ByID(id)
+		if !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "order not found"})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, order)
 	}
 }
 

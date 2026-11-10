@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -134,4 +135,91 @@ func TestCreateOrder(t *testing.T) {
 		})
 	}
 
+}
+
+func TestGetCreatedOrder(t *testing.T) {
+	store := repository.NewStore()
+	handler := httpapi.NewRouter(store)
+
+	createRequest := httptest.NewRequest(http.MethodPost, "/orders",
+		strings.NewReader(`{"customer":"Анна"}`))
+
+	createRequest.Header.Set("Content-Type", "application/json")
+
+	createResponse := httptest.NewRecorder()
+	handler.ServeHTTP(createResponse, createRequest)
+
+	if createResponse.Code != http.StatusCreated {
+		t.Fatalf("create status=%d, want 201; body=%s", createResponse.Code, createResponse.Body.String())
+	}
+
+	var created repository.Order
+	if err := json.Unmarshal(createResponse.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode created order: %v", err)
+	}
+	if created.ID <= 0 {
+		t.Fatalf("created id=%d, want positive", created.ID)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/orders/"+strconv.Itoa(created.ID), nil)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("get status=%d, want 200; body=%s", response.Code, response.Body.String())
+	}
+	if got := response.Header().Get("Content-Type"); got != "application/json" {
+		t.Errorf("Content-Type=%q, want application/json", got)
+	}
+
+	var order repository.Order
+	if err := json.Unmarshal(response.Body.Bytes(), &order); err != nil {
+		t.Fatalf("decode order: %v", err)
+	}
+	if order.ID != created.ID || order.Customer != "Анна" || order.Status != "new" {
+		t.Errorf("order=%+v, want id=%d, customer=Анна, status=new", order, created.ID)
+	}
+}
+
+func TestGetOrderErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		id         string
+		wantStatus int
+	}{
+		{name: "unknown order", id: "42", wantStatus: http.StatusNotFound},
+		{name: "non numeric id", id: "abc", wantStatus: http.StatusBadRequest},
+		{name: "zero id", id: "0", wantStatus: http.StatusBadRequest},
+		{name: "negative id", id: "-1", wantStatus: http.StatusBadRequest},
+		{name: "fractional id", id: "1.5", wantStatus: http.StatusBadRequest},
+		{name: "overflowing id", id: "999999999999999999999999999999", wantStatus: http.StatusBadRequest},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := repository.NewStore()
+			handler := httpapi.NewRouter(store)
+
+			request := httptest.NewRequest(http.MethodGet, "/orders/"+tt.id, nil)
+			response := httptest.NewRecorder()
+
+			handler.ServeHTTP(response, request)
+
+			if response.Code != tt.wantStatus {
+				t.Fatalf("status=%d, want %d; body=%s", response.Code, tt.wantStatus, response.Body.String())
+			}
+			if got := response.Header().Get("Content-Type"); got != "application/json" {
+				t.Errorf("Content-Type=%q, want \"application/json\"", got)
+			}
+			var body struct {
+				Error string `json:"error"`
+			}
+			if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode error response: %v", err)
+			}
+			if body.Error == "" {
+				t.Error("expected non empty error message")
+			}
+		})
+	}
 }

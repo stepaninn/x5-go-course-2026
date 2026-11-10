@@ -13,6 +13,8 @@ func NewRouter(store *repository.Store) http.Handler {
 	router.Use(logging)
 	router.Get("/health", health)
 	router.Head("/health", health)
+	router.Get("/orders/{id}", getOrder(store))
+	router.Head("/orders/{id}", getOrder(store))
 	router.Post("/orders", createOrder(store))
 	return router
 }
