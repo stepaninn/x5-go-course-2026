@@ -4,11 +4,14 @@ import (
 	"net/http"
 
 	"example.com/lesson8-practice/internal/repository"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func NewRouter(store *repository.Store) http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", health)
-	mux.HandleFunc("POST /orders", createOrder(store))
-	return mux
+	router := chi.NewRouter()
+	router.Get("/health", health)
+	router.Head("/health", health)
+	router.Post("/orders", createOrder(store))
+	return router
 }
