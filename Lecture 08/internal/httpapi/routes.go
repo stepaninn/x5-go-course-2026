@@ -10,7 +10,7 @@ import (
 
 func NewRouter(store *repository.Store) http.Handler {
 	router := chi.NewRouter()
-	router.Use(logging)
+	router.Use(requestID, logging)
 	router.Get("/health", health)
 	router.Head("/health", health)
 	router.Get("/orders/{id}", getOrder(store))

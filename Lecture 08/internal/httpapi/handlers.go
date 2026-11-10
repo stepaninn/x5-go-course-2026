@@ -11,7 +11,7 @@ import (
 )
 
 func health(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, r, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func createOrder(store *repository.Store) http.HandlerFunc {
@@ -22,20 +22,20 @@ func createOrder(store *repository.Store) http.HandlerFunc {
 
 		err := json.NewDecoder(r.Body).Decode(&input)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+			writeJSON(w, r, http.StatusBadRequest, map[string]string{"error": "bad request body"})
 			return
 		}
 
 		customer := strings.TrimSpace(input.Customer)
 		if customer == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "customer must be non empty"})
+			writeJSON(w, r, http.StatusBadRequest, map[string]string{"error": "customer must be non empty"})
 			return
 		}
 
 		order := store.Create(customer)
 
 		w.Header().Set("Location", "/orders/"+strconv.Itoa(order.ID))
-		writeJSON(w, http.StatusCreated, order)
+		writeJSON(w, r, http.StatusCreated, order)
 	}
 }
 
@@ -43,30 +43,36 @@ func getOrder(store *repository.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil || id <= 0 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid order id"})
+			writeJSON(w, r, http.StatusBadRequest, map[string]string{"error": "invalid order id"})
 			return
 		}
 
 		order, ok := store.ByID(id)
 		if !ok {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "order not found"})
+			writeJSON(w, r, http.StatusNotFound, map[string]string{"error": "order not found"})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, order)
+		writeJSON(w, r, http.StatusOK, order)
 	}
 }
 
-func writeJSON(w http.ResponseWriter, status int, value any) {
+func writeJSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 	data, err := json.Marshal(value)
 	if err != nil {
-		slog.Error("encode response", "error", err)
+		slog.Error("encode response",
+			"error", err,
+			"request-id", RequestID(r.Context()),
+		)
 		status = http.StatusInternalServerError
 		data = []byte(`{"error":"internal server error"}`)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if _, err := w.Write(append(data, '\n')); err != nil {
-		slog.Error("write response", "error", err)
+		slog.Error("write response",
+			"error", err,
+			"request-id", RequestID(r.Context()),
+		)
 	}
 }

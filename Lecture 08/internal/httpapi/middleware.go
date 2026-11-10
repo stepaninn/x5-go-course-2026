@@ -1,10 +1,31 @@
 package httpapi
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"time"
 )
+
+type requestIDKey struct{}
+
+var requestSequence atomic.Uint64
+
+func RequestID(ctx context.Context) string {
+	id, _ := ctx.Value(requestIDKey{}).(string)
+	return id
+}
+
+func requestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := fmt.Sprintf("request-%d", requestSequence.Add(1))
+		w.Header().Set("X-Request-ID", id)
+		ctx := context.WithValue(r.Context(), requestIDKey{}, id)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 
 func logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -22,6 +43,7 @@ func logging(next http.Handler) http.Handler {
 				level = slog.LevelError
 			}
 			slog.Log(r.Context(), level, "request",
+				"request-id", RequestID(r.Context()),
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", status,
