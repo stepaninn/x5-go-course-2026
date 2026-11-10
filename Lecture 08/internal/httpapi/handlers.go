@@ -20,9 +20,8 @@ func createOrder(store *repository.Store) http.HandlerFunc {
 			Customer string `json:"customer"`
 		}
 
-		err := json.NewDecoder(r.Body).Decode(&input)
-		if err != nil {
-			writeJSON(w, r, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+		if err := decodeJSON(w, r, &input); err != nil {
+			writeJSON(w, r, err.status, map[string]string{"error": err.message})
 			return
 		}
 
