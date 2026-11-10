@@ -11,6 +11,8 @@ import (
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
 	server := &http.Server{
 		Addr: "127.0.0.1:8080", Handler: httpapi.NewRouter(repository.NewStore()),
 		ReadHeaderTimeout: 3 * time.Second,
