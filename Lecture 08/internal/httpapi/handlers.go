@@ -16,8 +16,6 @@ func health(w http.ResponseWriter, r *http.Request) {
 
 func createOrder(store *repository.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Прочитайте customer из JSON и проверьте имя до вызова store.Create.
-		// Как завершить обработку сразу после ошибки?
 		var input struct {
 			Customer string `json:"customer"`
 		}
@@ -36,6 +34,7 @@ func createOrder(store *repository.Store) http.HandlerFunc {
 
 		order := store.Create(customer)
 
+		w.Header().Set("Location", "/orders/"+strconv.Itoa(order.ID))
 		writeJSON(w, http.StatusCreated, order)
 	}
 }
