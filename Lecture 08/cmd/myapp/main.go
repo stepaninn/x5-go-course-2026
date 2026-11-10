@@ -1,8 +1,9 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"example.com/lesson8-practice/internal/httpapi"
@@ -16,5 +17,9 @@ func main() {
 		ReadTimeout:       10 * time.Second, WriteTimeout: 10 * time.Second,
 		IdleTimeout: 60 * time.Second,
 	}
-	log.Fatal(server.ListenAndServe())
+	slog.Info("server starting", "addr", server.Addr)
+	if err := server.ListenAndServe(); err != nil {
+		slog.Error("server stopped", "error", err)
+		os.Exit(1)
+	}
 }
