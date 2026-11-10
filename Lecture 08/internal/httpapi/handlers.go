@@ -9,8 +9,7 @@ import (
 )
 
 func health(w http.ResponseWriter, r *http.Request) {
-	// Как задать формат и статус ответа?
-	http.Error(w, "TODO: health", http.StatusNotImplemented)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func createOrder(store *repository.Store) http.HandlerFunc {
