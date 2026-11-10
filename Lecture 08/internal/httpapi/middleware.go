@@ -56,6 +56,30 @@ func logging(next http.Handler) http.Handler {
 	})
 }
 
+func recovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if v := recover(); v != nil {
+				if v == http.ErrAbortHandler {
+					panic(v)
+				}
+				slog.ErrorContext(r.Context(), "panic recovered",
+					"panic", v,
+					"request-id", RequestID(r.Context()),
+				)
+				if response, ok := w.(*statusWriter); ok && response.status != 0 {
+					panic(http.ErrAbortHandler)
+				}
+				writeJSON(w, r, http.StatusInternalServerError,
+					map[string]string{"error": "internal server error"},
+				)
+			}
+		}()
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 type statusWriter struct {
 	http.ResponseWriter
 	status int
