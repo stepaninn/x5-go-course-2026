@@ -5,11 +5,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"example.com/lesson8-practice/internal/httpapi"
+	"example.com/lesson8-practice/internal/repository"
 )
 
 // До реализации health этот тест должен быть красным.
 func TestHealth(t *testing.T) {
-	h := newRouter(NewStore())
+	h := httpapi.NewRouter(repository.NewStore())
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
