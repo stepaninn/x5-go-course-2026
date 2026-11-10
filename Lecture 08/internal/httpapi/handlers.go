@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"example.com/lesson8-practice/internal/repository"
 )
@@ -16,7 +17,25 @@ func createOrder(store *repository.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Прочитайте customer из JSON и проверьте имя до вызова store.Create.
 		// Как завершить обработку сразу после ошибки?
-		http.Error(w, "TODO: create order", http.StatusNotImplemented)
+		var input struct {
+			Customer string `json:"customer"`
+		}
+
+		err := json.NewDecoder(r.Body).Decode(&input)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request body"})
+			return
+		}
+
+		customer := strings.TrimSpace(input.Customer)
+		if customer == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "customer must be non empty"})
+			return
+		}
+
+		order := store.Create(customer)
+
+		writeJSON(w, http.StatusCreated, order)
 	}
 }
 
