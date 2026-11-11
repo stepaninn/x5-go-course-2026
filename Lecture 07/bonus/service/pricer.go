@@ -1,5 +1,7 @@
 package service
 
+import "fmt"
+
 type DeliveryPricer interface {
 	Price(weightGrams, distanceKM int) (int64, error)
 }
@@ -11,13 +13,21 @@ type BaseTariff struct {
 }
 
 func (b BaseTariff) validate(weightGrams, distanceKM int) error {
-	// TODO: проверьте вес, положительную дистанцию и максимальную дистанцию.
+	if weightGrams <= 0 {
+		return fmt.Errorf("weight %d g: %w", weightGrams, ErrInvalidWeight)
+	}
+	if distanceKM <= 0 {
+		return fmt.Errorf("distance %d km: %w", distanceKM, ErrInvalidDistance)
+	}
+	if distanceKM > b.MaxDistanceKM {
+		return fmt.Errorf("distance %d km, max distance %d km: %w",
+			distanceKM, b.MaxDistanceKM, ErrDistanceTooLarge)
+	}
 	return nil
 }
 
 func billableKilograms(weightGrams int) int64 {
-	// TODO: округлите граммы вверх до целого оплачиваемого килограмма.
-	return 0
+	return (int64(weightGrams)-1)/1000 + 1
 }
 
 type Courier struct {
@@ -30,8 +40,14 @@ func NewCourier() Courier {
 }
 
 func (t Courier) Price(weightGrams, distanceKM int) (int64, error) {
-	// TODO: реализуйте формулу тарифа.
-	return 0, nil
+	if err := t.validate(weightGrams, distanceKM); err != nil {
+		return 0, err
+	}
+
+	weightPrice := t.PerKGKopecks * billableKilograms(weightGrams)
+	distancePrice := t.PerKMKopecks * int64(distanceKM)
+
+	return t.BasePriceKopecks + weightPrice + distancePrice, nil
 }
 
 type Pickup struct {
@@ -44,8 +60,14 @@ func NewPickup() Pickup {
 }
 
 func (t Pickup) Price(weightGrams, distanceKM int) (int64, error) {
-	// TODO: реализуйте формулу тарифа.
-	return 0, nil
+	if err := t.validate(weightGrams, distanceKM); err != nil {
+		return 0, err
+	}
+
+	weightPrice := t.PerKGKopecks * billableKilograms(weightGrams)
+	distancePrice := t.PerKMKopecks * int64(distanceKM)
+
+	return t.BasePriceKopecks + weightPrice + distancePrice, nil
 }
 
 type Express struct {
@@ -58,8 +80,14 @@ func NewExpress() Express {
 }
 
 func (t Express) Price(weightGrams, distanceKM int) (int64, error) {
-	// TODO: реализуйте формулу тарифа.
-	return 0, nil
+	if err := t.validate(weightGrams, distanceKM); err != nil {
+		return 0, err
+	}
+
+	weightPrice := t.PerKGKopecks * billableKilograms(weightGrams)
+	distancePrice := t.PerKMKopecks * int64(distanceKM)
+
+	return t.BasePriceKopecks + weightPrice + distancePrice, nil
 }
 
 var (
