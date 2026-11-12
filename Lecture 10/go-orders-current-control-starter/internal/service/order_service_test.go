@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"testing"
+	"time"
 
 	"example.com/order-service/internal/order"
 	"example.com/order-service/internal/service"
@@ -15,8 +16,23 @@ import (
 
 type testRepository struct {
 	order.Repository
-	orders  []order.Order
-	listErr error
+	orders    []order.Order
+	listErr   error
+	value     order.Order
+	getErr    error
+	updateErr error
+}
+
+func (r *testRepository) GetByID(ctx context.Context, id int64) (order.Order, error) {
+	return r.value, r.getErr
+}
+
+func (r *testRepository) Update(ctx context.Context, value order.Order) (order.Order, error) {
+	if r.updateErr != nil {
+		return order.Order{}, r.updateErr
+	}
+	r.value = value
+	return value, nil
 }
 
 func (r *testRepository) Create(ctx context.Context, value order.Order) (order.Order, error) {
@@ -290,6 +306,279 @@ func TestCreateOrder(t *testing.T) {
 			require.Equal(t, len(o.History), 1)
 			assert.Equal(t, order.StatusNew, o.History[0].Status)
 			assert.Equal(t, o.CreatedAt, o.History[0].ChangedAt)
+		})
+	}
+}
+
+func TestUpdateStatus(t *testing.T) {
+	repositoryErr := errors.New("repository error")
+
+	tests := []struct {
+		name      string
+		from      order.Status
+		to        order.Status
+		getErr    error
+		updateErr error
+		wantErr   error
+	}{
+		{
+			name: "new to processing",
+			from: order.StatusNew,
+			to:   order.StatusProcessing,
+		},
+		{
+			name: "new to cancelled",
+			from: order.StatusNew,
+			to:   order.StatusCancelled,
+		},
+		{
+			name: "processing to completed",
+			from: order.StatusProcessing,
+			to:   order.StatusCompleted,
+		},
+		{
+			name: "processing to cancelled",
+			from: order.StatusProcessing,
+			to:   order.StatusCancelled,
+		},
+		{
+			name:    "new to new",
+			from:    order.StatusNew,
+			to:      order.StatusNew,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "new to completed",
+			from:    order.StatusNew,
+			to:      order.StatusCompleted,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "processing to new",
+			from:    order.StatusProcessing,
+			to:      order.StatusNew,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "processing to processing",
+			from:    order.StatusProcessing,
+			to:      order.StatusProcessing,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "completed to new",
+			from:    order.StatusCompleted,
+			to:      order.StatusNew,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "completed to processing",
+			from:    order.StatusCompleted,
+			to:      order.StatusProcessing,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "completed to completed",
+			from:    order.StatusCompleted,
+			to:      order.StatusCompleted,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "completed to cancelled",
+			from:    order.StatusCompleted,
+			to:      order.StatusCancelled,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "cancelled to new",
+			from:    order.StatusCancelled,
+			to:      order.StatusNew,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "cancelled to processing",
+			from:    order.StatusCancelled,
+			to:      order.StatusProcessing,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "cancelled to completed",
+			from:    order.StatusCancelled,
+			to:      order.StatusCompleted,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "cancelled to cancelled",
+			from:    order.StatusCancelled,
+			to:      order.StatusCancelled,
+			wantErr: order.ErrInvalidStatusTransition,
+		},
+		{
+			name:    "empty status",
+			from:    order.StatusNew,
+			to:      "",
+			wantErr: order.ErrInvalidStatus,
+		},
+		{
+			name:    "unknown status",
+			from:    order.StatusNew,
+			to:      "unknown",
+			wantErr: order.ErrInvalidStatus,
+		},
+		{
+			name:    "order not found",
+			to:      order.StatusProcessing,
+			getErr:  order.ErrOrderNotFound,
+			wantErr: order.ErrOrderNotFound,
+		},
+		{
+			name:    "get error",
+			to:      order.StatusProcessing,
+			getErr:  repositoryErr,
+			wantErr: repositoryErr,
+		},
+		{
+			name:      "update error",
+			from:      order.StatusNew,
+			to:        order.StatusProcessing,
+			updateErr: repositoryErr,
+			wantErr:   repositoryErr,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			firstChange := order.StatusChange{
+				Status:    tt.from,
+				ChangedAt: time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC),
+			}
+			repo := &testRepository{
+				value: order.Order{
+					ID:      1,
+					Status:  tt.from,
+					History: []order.StatusChange{firstChange},
+				},
+				getErr:    tt.getErr,
+				updateErr: tt.updateErr,
+			}
+			svc := service.NewOrderService(repo)
+
+			o, err := svc.UpdateStatus(ctx, 1, tt.to)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Equal(t, tt.from, repo.value.Status)
+				require.Equal(t, len(repo.value.History), 1)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, int64(1), o.ID)
+			assert.Equal(t, tt.to, o.Status)
+			assert.Equal(t, o, repo.value)
+			require.Equal(t, len(o.History), 2)
+			assert.Equal(t, firstChange, o.History[0])
+			assert.Equal(t, tt.to, o.History[1].Status)
+		})
+	}
+}
+
+func TestGetOrderByID(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   order.Order
+		wantErr error
+	}{
+		{
+			name:  "existing order",
+			value: order.Order{ID: 1, Status: order.StatusNew, TotalPrice: 100},
+		},
+		{
+			name:    "order not found",
+			wantErr: order.ErrOrderNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			svc := service.NewOrderService(&testRepository{
+				value:  tt.value,
+				getErr: tt.wantErr,
+			})
+
+			o, err := svc.GetByID(ctx, 1)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.value, o)
+		})
+	}
+}
+
+func TestOrderHistory(t *testing.T) {
+	first := order.StatusChange{
+		Status:    order.StatusNew,
+		ChangedAt: time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC),
+	}
+	second := order.StatusChange{
+		Status:    order.StatusProcessing,
+		ChangedAt: time.Date(2026, time.January, 1, 13, 0, 0, 0, time.UTC),
+	}
+	third := order.StatusChange{
+		Status:    order.StatusCompleted,
+		ChangedAt: time.Date(2026, time.January, 1, 14, 0, 0, 0, time.UTC),
+	}
+
+	tests := []struct {
+		name    string
+		history []order.StatusChange
+		want    []order.StatusChange
+		wantErr error
+	}{
+		{
+			name:    "one change",
+			history: []order.StatusChange{first},
+			want:    []order.StatusChange{first},
+		},
+		{
+			name:    "sorted history",
+			history: []order.StatusChange{first, second, third},
+			want:    []order.StatusChange{first, second, third},
+		},
+		{
+			name:    "unsorted history",
+			history: []order.StatusChange{third, first, second},
+			want:    []order.StatusChange{first, second, third},
+		},
+		{
+			name:    "order not found",
+			wantErr: order.ErrOrderNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			svc := service.NewOrderService(&testRepository{
+				value:  order.Order{ID: 1, History: tt.history},
+				getErr: tt.wantErr,
+			})
+
+			history, err := svc.History(ctx, 1)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, history)
 		})
 	}
 }
