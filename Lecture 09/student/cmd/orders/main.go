@@ -11,7 +11,9 @@ import (
 	"example.com/lesson9practice/internal/service"
 )
 
-// TODO: общие аннотации API с BasePath /api/v1.
+// @title Orders API
+// @version 1.0
+// @BasePath /api/v1
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	api := httpapi.New(service.New(repository.New()), logger)
