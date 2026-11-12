@@ -31,7 +31,18 @@ func (a *API) status(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, StatusResponse{Status: "ok"})
 }
 
-// Дополнительно: задокументировать POST /orders.
+// @summary Create order with given name
+// @tags orders
+// @accept json
+// @produce json
+// @param request body CreateOrderRequest true "Data for order creating"
+// @success 201 {object} OrderResponse
+// @header 201 {string} Location "Location to the created order"
+// @failure 400 {object} ErrorResponse
+// @failure 413 {object} ErrorResponse
+// @failure 415 {object} ErrorResponse
+// @failure 500 {object} ErrorResponse
+// @router /orders [post]
 func (a *API) createOrder(w http.ResponseWriter, r *http.Request) {
 	// Указатель позволяет отличить null от объекта. Теги DTO сами не валидируют запрос.
 	var in *CreateOrderRequest
@@ -56,7 +67,6 @@ func (a *API) createOrder(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 201, orderResponse(order))
 }
 
-// TODO: добавить документацию GET /orders/{id}.
 // @summary Get order by ID
 // @tags orders
 // @produce json

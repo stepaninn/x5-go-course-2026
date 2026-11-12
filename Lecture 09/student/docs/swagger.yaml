@@ -1,5 +1,14 @@
 basePath: /api/v1
 definitions:
+  httpapi.CreateOrderRequest:
+    properties:
+      customer:
+        example: Алиса
+        minLength: 1
+        type: string
+    required:
+    - customer
+    type: object
   httpapi.ErrorResponse:
     properties:
       code:
@@ -45,6 +54,47 @@ info:
   title: Orders API
   version: "1.0"
 paths:
+  /orders:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Data for order creating
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpapi.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              description: Location to the created order
+              type: string
+          schema:
+            $ref: '#/definitions/httpapi.OrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "415":
+          description: Unsupported Media Type
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+      summary: Create order with given name
+      tags:
+      - orders
   /orders/{id}:
     get:
       parameters:
