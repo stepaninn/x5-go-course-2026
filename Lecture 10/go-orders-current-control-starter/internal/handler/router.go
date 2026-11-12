@@ -33,18 +33,10 @@ func NewRouter(service OrderService, logger *slog.Logger) http.Handler {
 		r.Get("/", h.listOrders)
 		r.Get("/{id}", h.getOrderByID)
 		r.Patch("/{id}/status", h.updateStatus)
-		r.Get("/{id}/history", h.notImplemented)
+		r.Get("/{id}/history", h.getOrderHistory)
 	})
 
 	return router
-}
-
-func (h *Handler) notImplemented(w http.ResponseWriter, r *http.Request) {
-	// TODO: replace this placeholder with separate handlers for every endpoint.
-	h.writeJSON(w, r, http.StatusNotImplemented, errorResponse{
-		Error: "endpoint is not implemented",
-		Code:  "NOT_IMPLEMENTED",
-	})
 }
 
 type errorResponse struct {

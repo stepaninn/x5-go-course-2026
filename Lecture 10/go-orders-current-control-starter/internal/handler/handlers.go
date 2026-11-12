@@ -194,3 +194,45 @@ func (h *Handler) updateStatus(w http.ResponseWriter, r *http.Request) {
 
 	h.writeJSON(w, r, http.StatusOK, o)
 }
+
+// @Summary Get order history
+// @Description Return status changes in chronological order
+// @Tags orders
+// @Produce json
+// @Param id path int true "Order ID" minimum(1)
+// @Success 200 {array} order.StatusChange "Order history"
+// @Failure 400 {object} errorResponse "Invalid order ID (INVALID_ID)"
+// @Failure 404 {object} errorResponse "Order not found (ORDER_NOT_FOUND)"
+// @Failure 500 {object} errorResponse "Internal server error (INTERNAL_ERROR)"
+// @Router /api/v1/orders/{id}/history [get]
+func (h *Handler) getOrderHistory(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id <= 0 {
+		h.writeJSON(w, r, http.StatusBadRequest, errorResponse{
+			Error: "id must be a positive integer",
+			Code:  "INVALID_ID",
+		})
+		return
+	}
+
+	history, err := h.service.History(r.Context(), int64(id))
+	if errors.Is(err, order.ErrOrderNotFound) {
+		h.writeJSON(w, r, http.StatusNotFound, errorResponse{
+			Error: "order not found",
+			Code:  "ORDER_NOT_FOUND",
+		})
+		return
+	}
+
+	if err != nil {
+		h.logger.ErrorContext(r.Context(), "get order history failed", "error", err, "request_id", RequestID(r.Context()))
+
+		h.writeJSON(w, r, http.StatusInternalServerError, errorResponse{
+			Error: "internal server error",
+			Code:  "INTERNAL_ERROR",
+		})
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, history)
+}
