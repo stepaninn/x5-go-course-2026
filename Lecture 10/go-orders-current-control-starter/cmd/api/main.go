@@ -12,6 +12,7 @@ import (
 
 // @title Orders API
 // @version 1.0
+// @description REST API for creating and retrieving orders, updating their statuses, and viewing status history
 // @BasePath /
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))

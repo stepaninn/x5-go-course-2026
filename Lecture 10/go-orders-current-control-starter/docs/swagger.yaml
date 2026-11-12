@@ -64,6 +64,8 @@ definitions:
     type: object
 info:
   contact: {}
+  description: REST API for creating and retrieving orders, updating their statuses,
+    and viewing status history
   title: Orders API
   version: "1.0"
 paths:

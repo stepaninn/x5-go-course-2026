@@ -1,6 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
+        "description": "REST API for creating and retrieving orders, updating their statuses, and viewing status history",
         "title": "Orders API",
         "contact": {},
         "version": "1.0"

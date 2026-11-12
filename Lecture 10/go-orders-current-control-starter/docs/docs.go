@@ -380,7 +380,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Orders API",
-	Description:      "",
+	Description:      "REST API for creating and retrieving orders, updating their statuses, and viewing status history",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
