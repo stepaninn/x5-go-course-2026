@@ -22,7 +22,11 @@ type API struct {
 
 func New(orders Orders, logger *slog.Logger) *API { return &API{orders: orders, logger: logger} }
 
-// TODO: добавить документацию GET /status.
+// @summary Check service status
+// @tags health
+// @produce json
+// @success 200 {object} StatusResponse
+// @router /status [get]
 func (a *API) status(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, StatusResponse{Status: "ok"})
 }

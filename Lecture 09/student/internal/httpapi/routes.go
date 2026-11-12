@@ -2,6 +2,9 @@ package httpapi
 
 import (
 	"net/http"
+
+	_ "example.com/lesson9practice/docs"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func (a *API) Handler() http.Handler {
@@ -14,7 +17,7 @@ func (a *API) Handler() http.Handler {
 	mux.HandleFunc("/api/v1/orders", methodNotAllowed("POST"))
 	mux.HandleFunc("/api/v1/orders/{id}", methodNotAllowed("GET, HEAD"))
 	mux.HandleFunc("/api/v1/", func(w http.ResponseWriter, r *http.Request) { writeError(w, 404, "route not found", "ROUTE_NOT_FOUND") })
-	// TODO: после генерации docs подключить Swagger UI здесь.
+	mux.Handle("GET /swagger/", httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json")))
 	return mux
 }
 func methodNotAllowed(allow string) http.HandlerFunc {
