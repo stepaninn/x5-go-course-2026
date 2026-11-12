@@ -29,7 +29,7 @@ func decodeJSON(_ http.ResponseWriter, r *http.Request, dst any) *inputError {
 func (h *Handler) writeJSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 	data, err := json.Marshal(value)
 	if err != nil {
-		h.logger.ErrorContext(r.Context(), "encode response failed", "error", err)
+		h.logger.ErrorContext(r.Context(), "encode response failed", "error", err, "request_id", RequestID(r.Context()))
 		status, data = http.StatusInternalServerError, []byte(`{"error":"internal server error","code":"INTERNAL_ERROR"}`)
 		w.Header().Del("Location")
 	}
@@ -38,6 +38,6 @@ func (h *Handler) writeJSON(w http.ResponseWriter, r *http.Request, status int, 
 	w.WriteHeader(status)
 
 	if _, err := w.Write(append(data, '\n')); err != nil {
-		h.logger.ErrorContext(r.Context(), "write response failed", "error", err)
+		h.logger.ErrorContext(r.Context(), "write response failed", "error", err, "request_id", RequestID(r.Context()))
 	}
 }

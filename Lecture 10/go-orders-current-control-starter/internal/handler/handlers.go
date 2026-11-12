@@ -48,7 +48,7 @@ func (h *Handler) createOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.logger.ErrorContext(r.Context(), "create order failed", "error", err)
+		h.logger.ErrorContext(r.Context(), "create order failed", "error", err, "request_id", RequestID(r.Context()))
 
 		h.writeJSON(w, r, http.StatusInternalServerError, errorResponse{
 			Error: "internal server error",
@@ -90,7 +90,7 @@ func (h *Handler) getOrderByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.logger.ErrorContext(r.Context(), "get order failed", "error", err)
+		h.logger.ErrorContext(r.Context(), "get order failed", "error", err, "request_id", RequestID(r.Context()))
 
 		h.writeJSON(w, r, http.StatusInternalServerError, errorResponse{
 			Error: "internal server error",
