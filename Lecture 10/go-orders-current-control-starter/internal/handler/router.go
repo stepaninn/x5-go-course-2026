@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -31,7 +30,7 @@ func NewRouter(service OrderService, logger *slog.Logger) http.Handler {
 
 	router.Get("/health", h.health)
 	router.Route("/api/v1/orders", func(r chi.Router) {
-		r.Post("/", h.notImplemented)
+		r.Post("/", h.createOrder)
 		r.Get("/", h.notImplemented)
 		r.Get("/{id}", h.notImplemented)
 		r.Patch("/{id}/status", h.notImplemented)
@@ -41,13 +40,9 @@ func NewRouter(service OrderService, logger *slog.Logger) http.Handler {
 	return router
 }
 
-func (h *Handler) health(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
-func (h *Handler) notImplemented(w http.ResponseWriter, _ *http.Request) {
+func (h *Handler) notImplemented(w http.ResponseWriter, r *http.Request) {
 	// TODO: replace this placeholder with separate handlers for every endpoint.
-	writeJSON(w, http.StatusNotImplemented, errorResponse{
+	h.writeJSON(w, r, http.StatusNotImplemented, errorResponse{
 		Error: "endpoint is not implemented",
 		Code:  "NOT_IMPLEMENTED",
 	})
@@ -56,10 +51,4 @@ func (h *Handler) notImplemented(w http.ResponseWriter, _ *http.Request) {
 type errorResponse struct {
 	Error string `json:"error"`
 	Code  string `json:"code"`
-}
-
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
 }
