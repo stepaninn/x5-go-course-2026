@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"math"
 	"testing"
 
@@ -14,10 +15,71 @@ import (
 
 type testRepository struct {
 	order.Repository
+	orders  []order.Order
+	listErr error
 }
 
 func (r *testRepository) Create(ctx context.Context, value order.Order) (order.Order, error) {
 	return value, nil
+}
+
+func (r *testRepository) List(ctx context.Context) ([]order.Order, error) {
+	return r.orders, r.listErr
+}
+
+func TestListOrders(t *testing.T) {
+	repositoryErr := errors.New("repository error")
+
+	tests := []struct {
+		name    string
+		orders  []order.Order
+		wantErr error
+	}{
+		{
+			name: "success 1",
+			orders: []order.Order{
+				{ID: 1, Status: order.StatusNew, TotalPrice: 100},
+			},
+		},
+		{
+			name: "success 2",
+			orders: []order.Order{
+				{ID: 2, Status: order.StatusProcessing, TotalPrice: 200},
+				{ID: 1, Status: order.StatusNew, TotalPrice: 100},
+			},
+		},
+		{
+			name:   "empty orders",
+			orders: []order.Order{},
+		},
+		{
+			name: "nil orders",
+		},
+		{
+			name:    "repository error",
+			wantErr: repositoryErr,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			svc := service.NewOrderService(&testRepository{
+				orders:  tt.orders,
+				listErr: tt.wantErr,
+			})
+
+			orders, err := svc.List(ctx)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.orders, orders)
+		})
+	}
 }
 
 func TestCreateOrder(t *testing.T) {
