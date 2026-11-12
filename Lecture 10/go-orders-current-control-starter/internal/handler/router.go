@@ -32,7 +32,7 @@ func NewRouter(service OrderService, logger *slog.Logger) http.Handler {
 	router.Route("/api/v1/orders", func(r chi.Router) {
 		r.Post("/", h.createOrder)
 		r.Get("/", h.notImplemented)
-		r.Get("/{id}", h.notImplemented)
+		r.Get("/{id}", h.getOrderByID)
 		r.Patch("/{id}/status", h.notImplemented)
 		r.Get("/{id}/history", h.notImplemented)
 	})

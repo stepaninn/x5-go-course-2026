@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"example.com/order-service/internal/order"
 )
@@ -57,4 +58,46 @@ func (h *Handler) createOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusCreated, o)
+}
+
+// @Summary Get order by ID
+// @Description Return order by its ID
+// @Tags orders
+// @Produce json
+// @Param id path int true "Order ID" minimum(1)
+// @Success 200 {object} order.Order "Order found"
+// @Failure 400 {object} errorResponse "Invalid order ID (INVALID_ID)"
+// @Failure 404 {object} errorResponse "Order not found (ORDER_NOT_FOUND)"
+// @Failure 500 {object} errorResponse "Internal server error (INTERNAL_ERROR)"
+// @Router /api/v1/orders/{id} [get]
+func (h *Handler) getOrderByID(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id <= 0 {
+		h.writeJSON(w, r, http.StatusBadRequest, errorResponse{
+			Error: "id must be a positive integer",
+			Code:  "INVALID_ID",
+		})
+		return
+	}
+
+	o, err := h.service.GetByID(r.Context(), int64(id))
+	if errors.Is(err, order.ErrOrderNotFound) {
+		h.writeJSON(w, r, http.StatusNotFound, errorResponse{
+			Error: "order not found",
+			Code:  "ORDER_NOT_FOUND",
+		})
+		return
+	}
+
+	if err != nil {
+		h.logger.ErrorContext(r.Context(), "get order failed", "error", err)
+
+		h.writeJSON(w, r, http.StatusInternalServerError, errorResponse{
+			Error: "internal server error",
+			Code:  "INTERNAL_ERROR",
+		})
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, o)
 }
