@@ -57,6 +57,15 @@ func (a *API) createOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO: добавить документацию GET /orders/{id}.
+// @summary Get order by ID
+// @tags orders
+// @produce json
+// @param id path int true "Order ID" minimum(1)
+// @success 200 {object} OrderResponse
+// @failure 400 {object} ErrorResponse
+// @failure 404 {object} ErrorResponse
+// @failure 500 {object} ErrorResponse
+// @router /orders/{id} [get]
 func (a *API) getOrder(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id <= 0 {

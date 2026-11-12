@@ -1,5 +1,37 @@
 basePath: /api/v1
 definitions:
+  httpapi.ErrorResponse:
+    properties:
+      code:
+        example: VALIDATION_ERROR
+        type: string
+      error:
+        example: customer is required
+        type: string
+    required:
+    - code
+    - error
+    type: object
+  httpapi.OrderResponse:
+    properties:
+      customer:
+        example: Алиса
+        type: string
+      id:
+        example: 1
+        minimum: 1
+        type: integer
+      status:
+        enum:
+        - new
+        - cancelled
+        example: new
+        type: string
+    required:
+    - customer
+    - id
+    - status
+    type: object
   httpapi.StatusResponse:
     properties:
       status:
@@ -13,6 +45,37 @@ info:
   title: Orders API
   version: "1.0"
 paths:
+  /orders/{id}:
+    get:
+      parameters:
+      - description: Order ID
+        in: path
+        minimum: 1
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpapi.OrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+      summary: Get order by ID
+      tags:
+      - orders
   /status:
     get:
       produces:
