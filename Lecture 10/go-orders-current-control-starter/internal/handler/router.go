@@ -32,7 +32,7 @@ func NewRouter(service OrderService, logger *slog.Logger) http.Handler {
 		r.Post("/", h.createOrder)
 		r.Get("/", h.listOrders)
 		r.Get("/{id}", h.getOrderByID)
-		r.Patch("/{id}/status", h.notImplemented)
+		r.Patch("/{id}/status", h.updateStatus)
 		r.Get("/{id}/history", h.notImplemented)
 	})
 

@@ -123,3 +123,74 @@ func (h *Handler) listOrders(w http.ResponseWriter, r *http.Request) {
 
 	h.writeJSON(w, r, http.StatusOK, orders)
 }
+
+// @Summary Update order status
+// @Description Allowed transitions: new to processing or cancelled; processing to completed or cancelled. Completed and cancelled are final statuses.
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID" minimum(1)
+// @Param input body order.UpdateStatusInput true "New order status"
+// @Success 200 {object} order.Order "Order updated"
+// @Failure 400 {object} errorResponse "Invalid ID (INVALID_ID), JSON (INVALID_JSON) or status (INVALID_STATUS)"
+// @Failure 404 {object} errorResponse "Order not found (ORDER_NOT_FOUND)"
+// @Failure 409 {object} errorResponse "Status transition is not allowed (INVALID_STATUS_TRANSITION)"
+// @Failure 500 {object} errorResponse "Internal server error (INTERNAL_ERROR)"
+// @Router /api/v1/orders/{id}/status [patch]
+func (h *Handler) updateStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id <= 0 {
+		h.writeJSON(w, r, http.StatusBadRequest, errorResponse{
+			Error: "id must be a positive integer",
+			Code:  "INVALID_ID",
+		})
+		return
+	}
+
+	var input order.UpdateStatusInput
+
+	if err := decodeJSON(w, r, &input); err != nil {
+		h.writeJSON(w, r, err.status, errorResponse{
+			Error: err.message,
+			Code:  "INVALID_JSON",
+		})
+		return
+	}
+
+	o, err := h.service.UpdateStatus(r.Context(), int64(id), input.Status)
+	if errors.Is(err, order.ErrOrderNotFound) {
+		h.writeJSON(w, r, http.StatusNotFound, errorResponse{
+			Error: "order not found",
+			Code:  "ORDER_NOT_FOUND",
+		})
+		return
+	}
+
+	if errors.Is(err, order.ErrInvalidStatus) {
+		h.writeJSON(w, r, http.StatusBadRequest, errorResponse{
+			Error: "invalid status",
+			Code:  "INVALID_STATUS",
+		})
+		return
+	}
+
+	if errors.Is(err, order.ErrInvalidStatusTransition) {
+		h.writeJSON(w, r, http.StatusConflict, errorResponse{
+			Error: "status transition is not allowed",
+			Code:  "INVALID_STATUS_TRANSITION",
+		})
+		return
+	}
+
+	if err != nil {
+		h.logger.ErrorContext(r.Context(), "update status failed", "error", err, "request_id", RequestID(r.Context()))
+
+		h.writeJSON(w, r, http.StatusInternalServerError, errorResponse{
+			Error: "internal server error",
+			Code:  "INTERNAL_ERROR",
+		})
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, o)
+}
