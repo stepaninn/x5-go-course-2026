@@ -10,6 +10,9 @@ import (
 	"example.com/order-service/internal/service"
 )
 
+// @title Orders API
+// @version 1.0
+// @BasePath /
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	repository := memory.NewOrderRepository()

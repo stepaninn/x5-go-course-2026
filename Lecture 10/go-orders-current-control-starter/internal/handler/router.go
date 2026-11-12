@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	_ "example.com/order-service/docs"
 	"example.com/order-service/internal/order"
 	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type OrderService interface {
@@ -28,6 +30,7 @@ func NewRouter(service OrderService, logger *slog.Logger) http.Handler {
 	router.Use(requestIDMiddleware, h.requestLoggingMiddleware, h.recoveryMiddleware)
 
 	router.Get("/health", h.health)
+	router.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json")))
 	router.Route("/api/v1/orders", func(r chi.Router) {
 		r.Post("/", h.createOrder)
 		r.Get("/", h.listOrders)
