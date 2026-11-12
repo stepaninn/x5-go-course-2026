@@ -101,3 +101,25 @@ func (h *Handler) getOrderByID(w http.ResponseWriter, r *http.Request) {
 
 	h.writeJSON(w, r, http.StatusOK, o)
 }
+
+// @Summary List orders
+// @Description Return all orders sorted by creation time
+// @Tags orders
+// @Produce json
+// @Success 200 {array} order.Order "Orders"
+// @Failure 500 {object} errorResponse "Internal server error (INTERNAL_ERROR)"
+// @Router /api/v1/orders [get]
+func (h *Handler) listOrders(w http.ResponseWriter, r *http.Request) {
+	orders, err := h.service.List(r.Context())
+	if err != nil {
+		h.logger.ErrorContext(r.Context(), "list orders failed", "error", err, "request_id", RequestID(r.Context()))
+
+		h.writeJSON(w, r, http.StatusInternalServerError, errorResponse{
+			Error: "internal server error",
+			Code:  "INTERNAL_ERROR",
+		})
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, orders)
+}

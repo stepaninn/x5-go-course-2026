@@ -30,7 +30,7 @@ func NewRouter(service OrderService, logger *slog.Logger) http.Handler {
 	router.Get("/health", h.health)
 	router.Route("/api/v1/orders", func(r chi.Router) {
 		r.Post("/", h.createOrder)
-		r.Get("/", h.notImplemented)
+		r.Get("/", h.listOrders)
 		r.Get("/{id}", h.getOrderByID)
 		r.Patch("/{id}/status", h.notImplemented)
 		r.Get("/{id}/history", h.notImplemented)
