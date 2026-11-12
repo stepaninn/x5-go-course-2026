@@ -11,6 +11,15 @@ const (
 	StatusCancelled  Status = "cancelled"
 )
 
+func (s Status) Valid() bool {
+	switch s {
+	case StatusNew, StatusProcessing, StatusCompleted, StatusCancelled:
+		return true
+	default:
+		return false
+	}
+}
+
 type Item struct {
 	Name     string `json:"name"`
 	Quantity int    `json:"quantity"`
@@ -26,8 +35,8 @@ type Order struct {
 	ID         int64          `json:"id"`
 	Items      []Item         `json:"items"`
 	TotalPrice int64          `json:"total_price"`
-	Status     Status          `json:"status"`
-	CreatedAt  time.Time       `json:"created_at"`
+	Status     Status         `json:"status"`
+	CreatedAt  time.Time      `json:"created_at"`
 	History    []StatusChange `json:"-"`
 }
 
