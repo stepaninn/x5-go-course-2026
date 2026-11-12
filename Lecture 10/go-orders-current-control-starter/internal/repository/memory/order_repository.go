@@ -77,7 +77,7 @@ func (r *OrderRepository) List(_ context.Context) ([]order.Order, error) {
 	}
 
 	// я так понял это подразумевается под временем создания в todo
-	slices.SortFunc(items, func(a, b order.Order) int {
+	slices.SortStableFunc(items, func(a, b order.Order) int {
 		return a.CreatedAt.Compare(b.CreatedAt)
 	})
 
