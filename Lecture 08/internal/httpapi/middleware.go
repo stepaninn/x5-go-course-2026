@@ -43,7 +43,7 @@ func logging(next http.Handler) http.Handler {
 				level = slog.LevelError
 			}
 			slog.Log(r.Context(), level, "request",
-				"request-id", RequestID(r.Context()),
+				"request_id", RequestID(r.Context()),
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", status,
@@ -64,8 +64,7 @@ func recovery(next http.Handler) http.Handler {
 					panic(v)
 				}
 				slog.ErrorContext(r.Context(), "panic recovered",
-					"panic", v,
-					"request-id", RequestID(r.Context()),
+					"request_id", RequestID(r.Context()),
 				)
 				if response, ok := w.(*statusWriter); ok && response.status != 0 {
 					panic(http.ErrAbortHandler)

@@ -61,7 +61,7 @@ func writeJSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 	if err != nil {
 		slog.Error("encode response",
 			"error", err,
-			"request-id", RequestID(r.Context()),
+			"request_id", RequestID(r.Context()),
 		)
 		status = http.StatusInternalServerError
 		data = []byte(`{"error":"internal server error"}`)
@@ -71,7 +71,7 @@ func writeJSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 	if _, err := w.Write(append(data, '\n')); err != nil {
 		slog.Error("write response",
 			"error", err,
-			"request-id", RequestID(r.Context()),
+			"request_id", RequestID(r.Context()),
 		)
 	}
 }
