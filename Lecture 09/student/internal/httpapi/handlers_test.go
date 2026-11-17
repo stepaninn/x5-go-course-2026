@@ -13,6 +13,8 @@ import (
 	"example.com/lesson9practice/internal/service"
 )
 
+// TODO: написать тесты для listOrders
+
 func newHandler() http.Handler {
 	return New(service.New(repository.New()), slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
 }

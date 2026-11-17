@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"example.com/lesson9practice/internal/model"
@@ -14,7 +15,9 @@ import (
 type Orders interface {
 	Create(string) (model.Order, error)
 	ByID(int) (model.Order, error)
+	List(model.ListOptions) ([]model.Order, error)
 }
+
 type API struct {
 	orders Orders
 	logger *slog.Logger
@@ -92,6 +95,77 @@ func (a *API) getOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, orderResponse(order))
+}
+
+// @summary List orders with query parameters
+// @tags orders
+// @produce json
+// @param limit query int false "Limit" minimum(1) maximum(100) default(20)
+// @param offset query int false "Offset" minimum(0) default(0)
+// @success 200 {array} OrderResponse
+// @failure 400 {object} ErrorResponse
+// @failure 500 {object} ErrorResponse
+// @router /orders [get]
+func (a *API) listOrders(w http.ResponseWriter, r *http.Request) {
+	values, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		writeError(w, 400, "invalid query", "INVALID_QUERY")
+		return
+	}
+
+	options, ok := parseQueryOptions(values)
+	if !ok {
+		writeError(w, 400, "invalid query", "INVALID_QUERY")
+		return
+	}
+
+	orders, err := a.orders.List(options)
+	if err != nil {
+		a.internalError(w, r, err)
+		return
+	}
+
+	body := make([]OrderResponse, 0, len(orders))
+	for _, o := range orders {
+		body = append(body, orderResponse(o))
+	}
+
+	writeJSON(w, 200, body)
+}
+
+func parseQueryOptions(v url.Values) (model.ListOptions, bool) {
+	options := model.ListOptions{Limit: 20}
+	for key, items := range v {
+		switch key {
+		case "limit", "offset":
+			if len(items) != 1 || items[0] == "" {
+				return options, false
+			}
+
+			for _, c := range items[0] {
+				if c < '0' || c > '9' {
+					return options, false
+				}
+			}
+
+			number, err := strconv.Atoi(items[0])
+			if err != nil || number < 0 {
+				return options, false
+			}
+
+			if key == "limit" {
+				if number < 1 || number > 100 {
+					return options, false
+				}
+				options.Limit = number
+			} else {
+				options.Offset = number
+			}
+		default:
+			return options, false
+		}
+	}
+	return options, true
 }
 
 func (a *API) internalError(w http.ResponseWriter, r *http.Request, err error) {

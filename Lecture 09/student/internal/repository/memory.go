@@ -1,13 +1,16 @@
 package repository
 
 import (
+	"cmp"
 	"errors"
+	"slices"
 	"sync"
 
 	"example.com/lesson9practice/internal/model"
 )
 
 var ErrNotFound = errors.New("order not found")
+var ErrBigOffset = errors.New("offset is too big")
 
 type Memory struct {
 	mu     sync.Mutex
@@ -33,4 +36,29 @@ func (m *Memory) ByID(id int) (model.Order, error) {
 		return model.Order{}, ErrNotFound
 	}
 	return order, nil
+}
+
+func (m *Memory) List(options model.ListOptions) ([]model.Order, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	orders := make([]model.Order, 0)
+	for _, v := range m.orders {
+		orders = append(orders, v)
+	}
+
+	slices.SortFunc(orders, func(a, b model.Order) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+
+	if options.Offset >= len(orders) {
+		return []model.Order{}, nil
+	}
+	orders = orders[options.Offset:]
+
+	if options.Limit >= len(orders) {
+		return orders, nil
+	}
+
+	return orders[:options.Limit], nil
 }

@@ -6,3 +6,8 @@ type Order struct {
 	Customer string
 	Status   string
 }
+
+type ListOptions struct {
+	Limit  int
+	Offset int
+}
