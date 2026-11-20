@@ -63,6 +63,9 @@ func TestListOrders(t *testing.T) {
 		{name: "default limit with offset", query: "?offset=1", want: orders[1:]},
 		{name: "offset equals count", query: "?offset=21", want: []OrderResponse{}},
 		{name: "maximum offset", query: "?limit=100&offset=" + strconv.Itoa(math.MaxInt), want: []OrderResponse{}},
+		{name: "status new", query: "?status=new", want: orders[:20]},
+		{name: "status new with limit and offset", query: "?limit=10&offset=5&status=new", want: orders[5:15]},
+		{name: "status cancelled", query: "?status=cancelled", want: []OrderResponse{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

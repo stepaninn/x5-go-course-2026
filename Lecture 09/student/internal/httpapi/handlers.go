@@ -102,6 +102,7 @@ func (a *API) getOrder(w http.ResponseWriter, r *http.Request) {
 // @produce json
 // @param limit query int false "Limit" minimum(1) maximum(100) default(20)
 // @param offset query int false "Offset" minimum(0) default(0)
+// @param status query string false "Status" enums(new, cancelled)
 // @success 200 {array} OrderResponse
 // @failure 400 {object} ErrorResponse
 // @failure 500 {object} ErrorResponse
@@ -134,7 +135,7 @@ func (a *API) listOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseQueryOptions(v url.Values) (model.ListOptions, bool) {
-	options := model.ListOptions{Limit: 20}
+	options := model.ListOptions{Limit: 20, Status: "new"}
 	for key, items := range v {
 		switch key {
 		case "limit", "offset":
@@ -161,6 +162,15 @@ func parseQueryOptions(v url.Values) (model.ListOptions, bool) {
 			} else {
 				options.Offset = number
 			}
+		case "status":
+			if len(items) != 1 {
+				return options, false
+			}
+
+			if status := items[0]; !model.ValidateStatus(status) {
+				return options, false
+			}
+			options.Status = items[0]
 		default:
 			return options, false
 		}

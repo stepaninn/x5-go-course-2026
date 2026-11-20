@@ -44,7 +44,10 @@ func (m *Memory) List(options model.ListOptions) ([]model.Order, error) {
 
 	orders := make([]model.Order, 0)
 	for _, v := range m.orders {
-		orders = append(orders, v)
+		if options.Status == "" || v.Status == options.Status {
+			orders = append(orders, v)
+		}
+
 	}
 
 	slices.SortFunc(orders, func(a, b model.Order) int {

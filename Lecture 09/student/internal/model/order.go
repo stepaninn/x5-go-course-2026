@@ -7,7 +7,17 @@ type Order struct {
 	Status   string
 }
 
+func ValidateStatus(status string) bool {
+	switch status {
+	case "new", "cancelled":
+		return true
+	default:
+		return false
+	}
+}
+
 type ListOptions struct {
 	Limit  int
 	Offset int
+	Status string
 }

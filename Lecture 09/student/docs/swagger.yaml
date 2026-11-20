@@ -70,6 +70,13 @@ paths:
         minimum: 0
         name: offset
         type: integer
+      - description: Status
+        enum:
+        - new
+        - cancelled
+        in: query
+        name: status
+        type: string
       produces:
       - application/json
       responses:
