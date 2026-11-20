@@ -48,6 +48,10 @@ func (m *Memory) ChangeStatusByID(id int, status string) (model.Order, error) {
 		return model.Order{}, ErrNotFound
 	}
 
+	if status == "new" {
+		return model.Order{}, ErrInvalidStatusTransition
+	}
+
 	if order.Status == "cancelled" {
 		return model.Order{}, ErrAlreadyCancelled
 	}

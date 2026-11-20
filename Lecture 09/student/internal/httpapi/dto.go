@@ -8,7 +8,7 @@ type CreateOrderRequest struct {
 }
 
 type ChangeStatusRequest struct {
-	Status string `json:"status" example:"new" minLength:"1" binding:"required"`
+	Status string `json:"status" example:"cancelled" minLength:"1" binding:"required"`
 }
 
 type OrderResponse struct {

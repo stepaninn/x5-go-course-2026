@@ -192,7 +192,7 @@ func (a *API) listOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseQueryOptions(v url.Values) (model.ListOptions, bool) {
-	options := model.ListOptions{Limit: 20, Status: "new"}
+	options := model.ListOptions{Limit: 20}
 	for key, items := range v {
 		switch key {
 		case "limit", "offset":
