@@ -23,7 +23,7 @@ gofmt -w .
 
 `Calculator` использует интерфейс `TariffRepository`, который объявлен внутри `service`, поэтому `service` не импортирует `repository`
 
-Процент покрытия для бизнес логики (`service`) с помощью `go test -cover ./service` составляет 61.1%
+Процент покрытия для бизнес логики (`service`) с помощью `go test -cover ./service` составляет 97.2%
 
 ### P.S.
 
