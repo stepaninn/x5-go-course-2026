@@ -1,5 +1,14 @@
 basePath: /api/v1
 definitions:
+  httpapi.ChangeStatusRequest:
+    properties:
+      status:
+        example: cancelled
+        minLength: 1
+        type: string
+    required:
+    - status
+    type: object
   httpapi.CreateOrderRequest:
     properties:
       customer:
@@ -166,6 +175,57 @@ paths:
           schema:
             $ref: '#/definitions/httpapi.ErrorResponse'
       summary: Get order by ID
+      tags:
+      - orders
+  /orders/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Order ID
+        in: path
+        minimum: 1
+        name: id
+        required: true
+        type: integer
+      - description: Data for status changing
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpapi.ChangeStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpapi.OrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "415":
+          description: Unsupported Media Type
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpapi.ErrorResponse'
+      summary: Change order status by ID
       tags:
       - orders
   /status:
