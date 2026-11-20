@@ -13,6 +13,7 @@ func (a *API) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/orders", a.createOrder)
 	mux.HandleFunc("GET /api/v1/orders/{id}", a.getOrder)
 	mux.HandleFunc("GET /api/v1/orders", a.listOrders)
+	mux.HandleFunc("PATCH /api/v1/orders/{id}/status", a.changeStatus)
 	// Fallback с тем же путём, но без метода, сохраняет единый JSON-контракт.
 	mux.HandleFunc("/api/v1/status", methodNotAllowed("GET, HEAD"))
 	mux.HandleFunc("/api/v1/orders", methodNotAllowed("GET, HEAD, POST"))

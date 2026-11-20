@@ -12,6 +12,7 @@ var ErrEmptyCustomer = errors.New("customer is required")
 type Repository interface {
 	Create(string) (model.Order, error)
 	ByID(int) (model.Order, error)
+	ChangeStatusByID(int, string) (model.Order, error)
 	List(model.ListOptions) ([]model.Order, error)
 }
 type Service struct{ repo Repository }
@@ -25,6 +26,10 @@ func (s *Service) Create(customer string) (model.Order, error) {
 	return s.repo.Create(customer)
 }
 func (s *Service) ByID(id int) (model.Order, error) { return s.repo.ByID(id) }
+
+func (s *Service) ChangeStatusByID(id int, status string) (model.Order, error) {
+	return s.repo.ChangeStatusByID(id, status)
+}
 
 func (s *Service) List(options model.ListOptions) ([]model.Order, error) {
 	return s.repo.List(options)

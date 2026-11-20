@@ -74,7 +74,7 @@ func TestListOrders(t *testing.T) {
 				h = newHandler()
 			}
 			var got []OrderResponse
-			assertListJSON(t, request(h, http.MethodGet, path+tt.query, "", ""), 200, &got)
+			assertJSON(t, request(h, http.MethodGet, path+tt.query, "", ""), 200, &got)
 			if got == nil {
 				t.Fatal("expected a JSON array, got null")
 			}
@@ -125,7 +125,7 @@ func TestListOrdersErrors(t *testing.T) {
 			w := request(handler, http.MethodGet, "/api/v1/orders?"+tt.query, "", "")
 
 			var got ErrorResponse
-			assertListJSON(t, w, status, &got)
+			assertJSON(t, w, status, &got)
 			if got != want {
 				t.Errorf("error=%+v want=%+v", got, want)
 			}
@@ -133,7 +133,7 @@ func TestListOrdersErrors(t *testing.T) {
 	}
 }
 
-func assertListJSON(t *testing.T, w *httptest.ResponseRecorder, status int, dst any) {
+func assertJSON(t *testing.T, w *httptest.ResponseRecorder, status int, dst any) {
 	t.Helper()
 	if w.Code != status {
 		t.Fatalf("status=%d want=%d body=%s", w.Code, status, w.Body)
@@ -173,6 +173,36 @@ func TestCreateAndReadOrder(t *testing.T) {
 	}
 }
 
+func TestCancelOrder(t *testing.T) {
+	handler := newHandler()
+	created := request(handler, http.MethodPost, "/api/v1/orders", `{"customer":"Алиса"}`, "application/json")
+	var want OrderResponse
+	assertJSON(t, created, 201, &want)
+	path := created.Header().Get("Location") + "/status"
+
+	t.Run("invalid target status", func(t *testing.T) {
+		var out ErrorResponse
+		w := request(handler, http.MethodPatch, path, `{"status":"new"}`, "application/json")
+		assertJSON(t, w, 400, &out)
+	})
+
+	const body = `{"status":"cancelled"}`
+	var got OrderResponse
+	w := request(handler, http.MethodPatch, path, body, "application/json")
+	assertJSON(t, w, 200, &got)
+	want.Status = "cancelled"
+	if got != want {
+		t.Fatalf("order=%+v want=%+v", got, want)
+	}
+
+	var out ErrorResponse
+	w = request(handler, http.MethodPatch, path, body, "application/json")
+	assertJSON(t, w, 409, &out)
+	if out.Code != "ORDER_ALREADY_CANCELLED" {
+		t.Errorf("error code=%q want ORDER_ALREADY_CANCELLED", out.Code)
+	}
+}
+
 func TestErrorsKeepJSONContract(t *testing.T) {
 	tests := []struct {
 		name, method, path, body, contentType string
@@ -182,6 +212,8 @@ func TestErrorsKeepJSONContract(t *testing.T) {
 		{"invalid id", "GET", "/api/v1/orders/abc", "", "", 400, "INVALID_ID"},
 		{"zero id", "GET", "/api/v1/orders/0", "", "", 400, "INVALID_ID"},
 		{"missing order", "GET", "/api/v1/orders/123", "", "", 404, "ORDER_NOT_FOUND"},
+		{"cancel with invalid id", "PATCH", "/api/v1/orders/abc/status", `{"status":"cancelled"}`, "application/json", 400, "INVALID_ID"},
+		{"cancel missing order", "PATCH", "/api/v1/orders/123/status", `{"status":"cancelled"}`, "application/json", 404, "ORDER_NOT_FOUND"},
 		{"missing route", "GET", "/api/v1/missing", "", "", 404, "ROUTE_NOT_FOUND"},
 		{"wrong method", "PUT", "/api/v1/orders/1", "", "", 405, "METHOD_NOT_ALLOWED"},
 		{"empty customer", "POST", "/api/v1/orders", `{"customer":" "}`, "application/json", 400, "VALIDATION_ERROR"},

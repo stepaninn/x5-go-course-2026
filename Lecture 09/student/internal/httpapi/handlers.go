@@ -15,6 +15,7 @@ import (
 type Orders interface {
 	Create(string) (model.Order, error)
 	ByID(int) (model.Order, error)
+	ChangeStatusByID(int, string) (model.Order, error)
 	List(model.ListOptions) ([]model.Order, error)
 }
 
@@ -94,6 +95,62 @@ func (a *API) getOrder(w http.ResponseWriter, r *http.Request) {
 		a.internalError(w, r, err)
 		return
 	}
+	writeJSON(w, 200, orderResponse(order))
+}
+
+// @summary Change order status by ID
+// @tags orders
+// @accept json
+// @produce json
+// @param id path int true "Order ID" minimum(1)
+// @param request body ChangeStatusRequest true "Data for status changing"
+// @success 200 {object} OrderResponse
+// @failure 400 {object} ErrorResponse
+// @failure 404 {object} ErrorResponse
+// @failure 409 {object} ErrorResponse
+// @failure 413 {object} ErrorResponse
+// @failure 415 {object} ErrorResponse
+// @failure 500 {object} ErrorResponse
+// @router /orders/{id}/status [patch]
+func (a *API) changeStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id <= 0 {
+		writeError(w, 400, "id must be a positive integer", "INVALID_ID")
+		return
+	}
+
+	var in *ChangeStatusRequest
+	if err := decodeJSON(w, r, &in); err != nil {
+		writeError(w, err.status, err.message, err.code)
+		return
+	}
+	if in == nil {
+		writeError(w, 400, "body must be a JSON object", "INVALID_JSON")
+		return
+	}
+	if !model.ValidateStatus(in.Status) {
+		writeError(w, 400, "invalid status", "INVALID_JSON")
+		return
+	}
+
+	order, err := a.orders.ChangeStatusByID(id, in.Status)
+	if errors.Is(err, repository.ErrNotFound) {
+		writeError(w, 404, "order not found", "ORDER_NOT_FOUND")
+		return
+	}
+	if errors.Is(err, repository.ErrAlreadyCancelled) {
+		writeError(w, 409, "order already cancelled", "ORDER_ALREADY_CANCELLED")
+		return
+	}
+	if errors.Is(err, repository.ErrInvalidStatusTransition) {
+		writeError(w, 400, "unsupported status change", "UNSUPPORTED_STATUS_CHANGE")
+		return
+	}
+	if err != nil {
+		a.internalError(w, r, err)
+		return
+	}
+
 	writeJSON(w, 200, orderResponse(order))
 }
 

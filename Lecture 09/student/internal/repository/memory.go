@@ -10,7 +10,8 @@ import (
 )
 
 var ErrNotFound = errors.New("order not found")
-var ErrBigOffset = errors.New("offset is too big")
+var ErrAlreadyCancelled = errors.New("order already cancelled")
+var ErrInvalidStatusTransition = errors.New("unsupported status change")
 
 type Memory struct {
 	mu     sync.Mutex
@@ -36,6 +37,32 @@ func (m *Memory) ByID(id int) (model.Order, error) {
 		return model.Order{}, ErrNotFound
 	}
 	return order, nil
+}
+
+func (m *Memory) ChangeStatusByID(id int, status string) (model.Order, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	order, ok := m.orders[id]
+	if !ok {
+		return model.Order{}, ErrNotFound
+	}
+
+	if order.Status == "cancelled" {
+		return model.Order{}, ErrAlreadyCancelled
+	}
+
+	if order.Status == status {
+		return model.Order{}, ErrInvalidStatusTransition
+	}
+
+	if order.Status == "new" && status == "cancelled" {
+		order.Status = "cancelled"
+		m.orders[id] = order
+		return order, nil
+	}
+
+	return model.Order{}, ErrInvalidStatusTransition
 }
 
 func (m *Memory) List(options model.ListOptions) ([]model.Order, error) {

@@ -7,6 +7,10 @@ type CreateOrderRequest struct {
 	Customer string `json:"customer" example:"Алиса" minLength:"1" binding:"required"`
 }
 
+type ChangeStatusRequest struct {
+	Status string `json:"status" example:"new" minLength:"1" binding:"required"`
+}
+
 type OrderResponse struct {
 	ID       int    `json:"id" example:"1" minimum:"1" binding:"required"`
 	Customer string `json:"customer" example:"Алиса" binding:"required"`
