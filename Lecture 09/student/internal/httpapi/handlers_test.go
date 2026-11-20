@@ -2,18 +2,21 @@ package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
+	"example.com/lesson9practice/internal/model"
 	"example.com/lesson9practice/internal/repository"
 	"example.com/lesson9practice/internal/service"
 )
-
-// TODO: написать тесты для listOrders
 
 func newHandler() http.Handler {
 	return New(service.New(repository.New()), slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
@@ -27,6 +30,117 @@ func request(handler http.Handler, method, path, body, contentType string) *http
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 	return w
+}
+
+func TestListOrders(t *testing.T) {
+	const path = "/api/v1/orders"
+	handler := newHandler()
+	orders := make([]OrderResponse, 21)
+	for i := range orders {
+		customer := fmt.Sprintf("Client %d", i+1)
+		body := fmt.Sprintf(`{"customer":"Client %d"}`, i+1)
+
+		w := request(handler, http.MethodPost, path, body, "application/json")
+		if w.Code != 201 {
+			t.Fatalf("create order %d: status=%d body=%s", i+1, w.Code, w.Body)
+		}
+
+		orders[i] = OrderResponse{ID: i + 1, Customer: customer, Status: "new"}
+	}
+
+	tests := []struct {
+		name  string
+		query string
+		empty bool
+		want  []OrderResponse
+	}{
+		{name: "empty repository", empty: true, want: []OrderResponse{}},
+		{name: "default page", want: orders[:20]},
+		{name: "first page", query: "?limit=2&offset=0", want: orders[:2]},
+		{name: "second order", query: "?limit=1&offset=1", want: orders[1:2]},
+		{name: "partial last page", query: "?limit=2&offset=20", want: orders[20:]},
+		{name: "maximum limit", query: "?limit=100", want: orders},
+		{name: "default limit with offset", query: "?offset=1", want: orders[1:]},
+		{name: "offset equals count", query: "?offset=21", want: []OrderResponse{}},
+		{name: "maximum offset", query: "?limit=100&offset=" + strconv.Itoa(math.MaxInt), want: []OrderResponse{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := handler
+			if tt.empty {
+				h = newHandler()
+			}
+			var got []OrderResponse
+			assertListJSON(t, request(h, http.MethodGet, path+tt.query, "", ""), 200, &got)
+			if got == nil {
+				t.Fatal("expected a JSON array, got null")
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("orders=%+v want=%+v", got, tt.want)
+			}
+		})
+	}
+}
+
+type listOrdersStub struct {
+	Orders
+	list func(model.ListOptions) ([]model.Order, error)
+}
+
+func (s listOrdersStub) List(options model.ListOptions) ([]model.Order, error) {
+	return s.list(options)
+}
+
+func TestListOrdersErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+	}{
+		{name: "empty limit", query: "limit="},
+		{name: "empty offset", query: "offset="},
+		{name: "non numeric limit", query: "limit=abc"},
+		{name: "non numeric offset", query: "offset=abc"},
+		{name: "negative limit", query: "limit=-1"},
+		{name: "negative offset", query: "offset=-1"},
+		{name: "zero limit", query: "limit=0"},
+		{name: "limit above maximum", query: "limit=101"},
+		{name: "overflowing offset", query: "offset=999999999999999999999999999999"},
+		{name: "repeated limit", query: "limit=1&limit=2"},
+		{name: "repeated offset", query: "offset=1&offset=2"},
+		{name: "unknown parameter", query: "page=1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status := http.StatusBadRequest
+			want := ErrorResponse{Code: "INVALID_QUERY", Error: "invalid query"}
+
+			orders := listOrdersStub{list: func(model.ListOptions) ([]model.Order, error) {
+				return nil, nil
+			}}
+
+			handler := New(orders, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
+			w := request(handler, http.MethodGet, "/api/v1/orders?"+tt.query, "", "")
+
+			var got ErrorResponse
+			assertListJSON(t, w, status, &got)
+			if got != want {
+				t.Errorf("error=%+v want=%+v", got, want)
+			}
+		})
+	}
+}
+
+func assertListJSON(t *testing.T, w *httptest.ResponseRecorder, status int, dst any) {
+	t.Helper()
+	if w.Code != status {
+		t.Fatalf("status=%d want=%d body=%s", w.Code, status, w.Body)
+	}
+	if got := w.Header().Get("Content-Type"); got != "application/json" {
+		t.Fatalf("Content-Type=%q", got)
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), dst); err != nil {
+		t.Fatalf("decode JSON: %v; body=%s", err, w.Body)
+	}
 }
 
 func TestCreateAndReadOrder(t *testing.T) {
