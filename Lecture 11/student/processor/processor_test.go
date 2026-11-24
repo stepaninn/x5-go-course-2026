@@ -1,6 +1,8 @@
 package processor
 
 import (
+	"errors"
+	"io/fs"
 	"path/filepath"
 	"testing"
 )
@@ -39,5 +41,20 @@ func TestProcessFiles(t *testing.T) {
 	}
 	if len(want) > 0 {
 		t.Fatalf("не получены результаты: %v", want)
+	}
+}
+
+func TestNonExistingFiles(t *testing.T) {
+	paths := []string{
+		filepath.Join("..", "testdata", "not-existing.txt"),
+	}
+
+	for got := range ProcessFiles(paths, 2) {
+		if got.Err == nil || got.Path != paths[0] {
+			t.Fatalf("non empty result for non existing file")
+		}
+		if !errors.Is(got.Err, fs.ErrNotExist) {
+			t.Fatalf("for %q want fs.ErrNotExits, got %+v", got.Path, got.Err)
+		}
 	}
 }
