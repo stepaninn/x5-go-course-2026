@@ -17,12 +17,14 @@ func TestProcessFiles(t *testing.T) {
 	paths := []string{
 		filepath.Join("..", "testdata", "orders-a.txt"),
 		filepath.Join("..", "testdata", "orders-b.txt"),
+		filepath.Join("..", "testdata", "orders-c.txt"),
 		filepath.Join("..", "testdata", "empty.txt"),
 	}
 	want := map[string][2]int{
 		paths[0]: {3, 5},
 		paths[1]: {2, 4},
-		paths[2]: {0, 0},
+		paths[2]: {13, 12},
+		paths[3]: {0, 0},
 	}
 
 	for got := range ProcessFiles(paths, 2) {
