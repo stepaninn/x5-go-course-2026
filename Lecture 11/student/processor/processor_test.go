@@ -29,7 +29,8 @@ func TestProcessFiles(t *testing.T) {
 		paths[3]: {0, 0},
 	}
 
-	for got := range ProcessFiles(paths, 2) {
+	results, _ := ProcessFiles(paths, 2)
+	for got := range results {
 		stats, found := want[got.Path]
 		if !found {
 			t.Fatalf("лишний результат для %q", got.Path)
@@ -49,12 +50,30 @@ func TestNonExistingFiles(t *testing.T) {
 		filepath.Join("..", "testdata", "not-existing.txt"),
 	}
 
-	for got := range ProcessFiles(paths, 2) {
+	results, _ := ProcessFiles(paths, 2)
+	for got := range results {
 		if got.Err == nil || got.Path != paths[0] {
-			t.Fatalf("non empty result for non existing file")
+			t.Fatalf("non empty result for non existing file %q", got.Path)
 		}
 		if !errors.Is(got.Err, fs.ErrNotExist) {
 			t.Fatalf("for %q want fs.ErrNotExits, got %+v", got.Path, got.Err)
 		}
+	}
+}
+
+func TestTotalCount(t *testing.T) {
+	paths := []string{
+		filepath.Join("..", "testdata", "orders-a.txt"),
+		filepath.Join("..", "testdata", "orders-b.txt"),
+		filepath.Join("..", "testdata", "empty.txt"),
+	}
+
+	results, totals := ProcessFiles(paths, 2)
+	for range results {
+	}
+
+	got := <-totals
+	if got.TotalLines != 5 || got.TotalWords != 9 {
+		t.Fatalf("total = %+v, want 5 lines and 9 words", got)
 	}
 }

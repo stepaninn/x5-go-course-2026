@@ -14,7 +14,10 @@ func main() {
 	}
 	count := 0
 	failed := false
-	for result := range processor.ProcessFiles(paths, 3) {
+
+	results, totals := processor.ProcessFiles(paths, 3)
+
+	for result := range results {
 		count++
 		if result.Err != nil {
 			fmt.Fprintln(os.Stderr, result.Err)
@@ -24,6 +27,10 @@ func main() {
 		fmt.Printf("%s: строк %d, слов %d\n", result.Path, result.Lines, result.Words)
 	}
 	fmt.Println("Обработано файлов:", count)
+
+	total := <-totals
+	fmt.Printf("Всего строк: %d, всего слов: %d\n", total.TotalLines, total.TotalWords)
+
 	if failed {
 		os.Exit(1)
 	}
