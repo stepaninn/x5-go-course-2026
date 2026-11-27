@@ -82,6 +82,15 @@ func TestWaitLineCanceled(t *testing.T) {
 	}
 }
 
+func TestWaitLineCancelWithZeroDuration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := waitLine(ctx, 0)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("ошибка = %v, нужна context.Canceled", err)
+	}
+}
+
 func TestDeadlineDuringWork(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
@@ -103,6 +112,55 @@ func TestDeadlineDuringWork(t *testing.T) {
 	if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		t.Errorf("причина = %v, нужна DeadlineExceeded", ctx.Err())
 	}
+}
+
+func TestEnoughDeadline(t *testing.T) {
+	paths := []string{fixture("orders-a.txt"), fixture("orders-b.txt"), fixture("empty.txt")}
+	want := map[string][2]int{paths[0]: {3, 5}, paths[1]: {2, 4}, paths[2]: {0, 0}}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	results, done := ProcessFiles(ctx, paths, 3, 250*time.Millisecond)
+	for got := range results {
+		stats, ok := want[got.Path]
+		if !ok || got.Err != nil || got.Lines != stats[0] || got.Words != stats[1] {
+			t.Errorf("неожиданный результат: %+v", got)
+		}
+		delete(want, got.Path)
+	}
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+		t.Error("дедлайн не должен был наступить")
+	}
+
+	if len(want) != 0 {
+		t.Errorf("нет результатов %v: ", want)
+	}
+	if err := ctx.Err(); err != nil {
+		t.Errorf("ошибка %v, должно быть nil", err)
+	}
+}
+
+func TestCancelParent(t *testing.T) {
+	parent, cancelParent := context.WithCancel(context.Background())
+	defer cancelParent()
+
+	child, cancelChild := context.WithTimeout(parent, 5*time.Second)
+	defer cancelChild()
+
+	if err := child.Err(); err != nil {
+		t.Fatalf("родитель еще не отменен, child.Err() = %v, ожидалось nil", err)
+	}
+
+	cancelParent()
+
+	if err := child.Err(); !errors.Is(err, context.Canceled) {
+		t.Fatalf("родитель уже отменен, child.Err() = %v, ожидалось context.Canceled", err)
+	}
+
 }
 
 func TestCancelWithoutReading(t *testing.T) {
