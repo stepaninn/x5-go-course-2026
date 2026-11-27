@@ -23,8 +23,11 @@ func ProcessFiles(ctx context.Context, paths []string, workers int, lineDelay ti
 		defer wg.Done()
 		defer close(jobs)
 		for _, path := range paths {
-			// TODO 2: дайте раздатчику выйти, если контекст отменили.
-			jobs <- path
+			select {
+			case jobs <- path:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 
@@ -32,12 +35,26 @@ func ProcessFiles(ctx context.Context, paths []string, workers int, lineDelay ti
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			// TODO 2: работник должен замечать отмену и при ожидании задания.
-			for path := range jobs {
-				// TODO 2: не начинайте новый файл, если отмена уже известна.
-				result := analyzeFile(ctx, path, lineDelay)
-				// TODO 2: получатель после отмены может больше не читать results.
-				results <- result
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case path, ok := <-jobs:
+					if !ok {
+						return
+					}
+					if err := ctx.Err(); err != nil {
+						return
+					}
+
+					result := analyzeFile(ctx, path, lineDelay)
+
+					select {
+					case <-ctx.Done():
+						return
+					case results <- result:
+					}
+				}
 			}
 		}()
 	}
