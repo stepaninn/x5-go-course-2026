@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -20,7 +21,9 @@ type Result struct {
 // analyzeFile считает строки и слова, как на занятии 11.
 // lineDelay имитирует работу над строкой, например проверку заказов.
 func analyzeFile(ctx context.Context, path string, lineDelay time.Duration) Result {
-	// TODO 1: не открывайте новый файл, если ctx уже отменён.
+	if err := ctx.Err(); err != nil {
+		return Result{Path: path, Err: err}
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return Result{Path: path, Err: err}
@@ -30,7 +33,9 @@ func analyzeFile(ctx context.Context, path string, lineDelay time.Duration) Resu
 	result := Result{Path: path}
 	reader := bufio.NewReader(file)
 	for {
-		// TODO 1: проверяйте отмену между чтениями строк.
+		if err := ctx.Err(); err != nil {
+			return Result{Path: path, Err: err}
+		}
 		line, err := reader.ReadString('\n')
 		if len(line) > 0 {
 			if err := waitLine(ctx, lineDelay); err != nil {
@@ -49,8 +54,18 @@ func analyzeFile(ctx context.Context, path string, lineDelay time.Duration) Resu
 }
 
 func waitLine(ctx context.Context, delay time.Duration) error {
-	// TODO 1: замените Sleep ожиданием, которое реагирует на ctx.Done().
-	// Если ctx уже отменён, верните его ошибку даже при delay == 0.
-	time.Sleep(delay)
-	return nil
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		fmt.Println("строка обработана")
+		return nil
+	}
 }

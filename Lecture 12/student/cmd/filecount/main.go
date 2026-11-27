@@ -19,9 +19,10 @@ func main() {
 		paths = []string{"testdata/orders-a.txt", "testdata/orders-b.txt", "testdata/empty.txt"}
 	}
 	fmt.Println("Заданный бюджет:", *budget)
-	// TODO 1: создайте один контекст с этим бюджетом на весь прогон.
-	// Освободите его ресурсы при выходе из main.
-	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(context.Background(), *budget)
+	defer cancel()
+
 	start := time.Now()
 	results, done := processor.ProcessFiles(ctx, paths, *workers, *lineDelay)
 	count := 0
